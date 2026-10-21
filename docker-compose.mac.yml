@@ -1,0 +1,46 @@
+# Override for macOS (Docker Desktop for Mac, Intel or Apple Silicon) — use it through ./cluster.sh,
+# or directly:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.mac.yml up -d
+#
+# Data on named Docker volumes instead of bind mounts: on macOS bind mounts go through the
+# VirtioFS file sharing layer, which is much slower for ClickHouse's many small files and can
+# break the ownership changes the server makes at start-up. Logs stay bind-mounted in ./<node>/logs.
+# The ClickHouse images are multi-arch (amd64 + arm64), so Apple Silicon runs them natively.
+#
+# If 8123/9000 are already taken on the machine, add under clickhouse-1:
+#     ports: !override
+#       - "127.0.0.1:18123:8123"
+#       - "127.0.0.1:19000:9000"
+# and set CH_HTTP_PORT=18123 in .env (used by 02_load_files.sh).
+services:
+  keeper-1:
+    volumes:
+      - keeper-1-data:/var/lib/clickhouse
+  keeper-2:
+    volumes:
+      - keeper-2-data:/var/lib/clickhouse
+  keeper-3:
+    volumes:
+      - keeper-3-data:/var/lib/clickhouse
+  clickhouse-1:
+    volumes:
+      - clickhouse-1-data:/var/lib/clickhouse
+  clickhouse-2:
+    volumes:
+      - clickhouse-2-data:/var/lib/clickhouse
+  clickhouse-3:
+    volumes:
+      - clickhouse-3-data:/var/lib/clickhouse
+  clickhouse-4:
+    volumes:
+      - clickhouse-4-data:/var/lib/clickhouse
+
+volumes:
+  keeper-1-data:
+  keeper-2-data:
+  keeper-3-data:
+  clickhouse-1-data:
+  clickhouse-2-data:
+  clickhouse-3-data:
+  clickhouse-4-data:

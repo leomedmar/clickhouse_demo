@@ -1,0 +1,89 @@
+version: '3.8'
+
+x-keeper-defaults: &keeper-defaults
+  image: clickhouse/clickhouse-keeper:25.8
+  restart: "no"
+  networks:
+    - clickhouse_net
+  ulimits:
+    nofile:
+      soft: 262144
+      hard: 262144
+
+x-server-defaults: &server-defaults
+  image: clickhouse/clickhouse-server:25.8
+  restart: "no"
+  networks:
+    - clickhouse_net
+  ulimits:
+    nofile:
+      soft: 262144
+      hard: 262144
+  depends_on:
+    - keeper-1
+    - keeper-2
+    - keeper-3
+
+services:
+  keeper-1:
+    <<: *keeper-defaults
+    container_name: keeper-1
+    hostname: keeper-1
+    environment:
+      - KEEPER_ID=1
+    volumes:
+      - ./config/keeper/keeper-config.xml:/etc/clickhouse-keeper/keeper_config.xml:ro
+      - ./keeper-1/data:/var/lib/clickhouse
+      - ./keeper-1/logs:/var/log/clickhouse-keeper
+
+  keeper-2:
+    <<: *keeper-defaults
+    container_name: keeper-2
+    hostname: keeper-2
+    environment:
+      - KEEPER_ID=2
+    volumes:
+      - ./config/keeper/keeper-config.xml:/etc/clickhouse-keeper/keeper_config.xml:ro
+      - ./keeper-2/data:/var/lib/clickhouse
+      - ./keeper-2/logs:/var/log/clickhouse-keeper
+
+  keeper-3:
+    <<: *keeper-defaults
+    container_name: keeper-3
+    hostname: keeper-3
+    environment:
+      - KEEPER_ID=3
+    volumes:
+      - ./config/keeper/keeper-config.xml:/etc/clickhouse-keeper/keeper_config.xml:ro
+      - ./keeper-3/data:/var/lib/clickhouse
+      - ./keeper-3/logs:/var/log/clickhouse-keeper
+
+  clickhouse-1:
+    <<: *server-defaults
+    container_name: clickhouse-1
+    hostname: clickhouse-1
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+      - ./config/server/cluster.xml:/etc/clickhouse-server/config.d/cluster.xml:ro
+      - ./config/macros/macros-1.xml:/etc/clickhouse-server/config.d/macros.xml:ro
+      - ./clickhouse-1/data:/var/lib/clickhouse
+      - ./clickhouse-1/logs:/var/log/clickhouse-server
+
+  clickhouse-2:
+    <<: *server-defaults
+    container_name: clickhouse-2
+    hostname: clickhouse-2
+    ports:
+      - "8124:8123"
+      - "9001:9000"
+    volumes:
+      - ./config/server/cluster.xml:/etc/clickhouse-server/config.d/cluster.xml:ro
+      - ./config/macros/macros-2.xml:/etc/clickhouse-server/config.d/macros.xml:ro
+      - ./clickhouse-2/data:/var/lib/clickhouse
+      - ./clickhouse-2/logs:/var/log/clickhouse-server
+
+networks:
+  clickhouse_net:
+    driver: bridge

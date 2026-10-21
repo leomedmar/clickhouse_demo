@@ -1,0 +1,52 @@
+<clickhouse>
+    <zookeeper>
+        <node>
+            <host>keeper-1</host>
+            <port>9181</port>
+        </node>
+        <node>
+            <host>keeper-2</host>
+            <port>9181</port>
+        </node>
+        <node>
+            <host>keeper-3</host>
+            <port>9181</port>
+        </node>
+    </zookeeper>
+
+    <remote_servers>
+        <!-- 2 shards x 2 replicas -->
+        <cluster_study>
+            <shard>
+                <internal_replication>true</internal_replication>
+                <replica>
+                    <host>clickhouse-1</host>
+                    <port>9000</port>
+                    <user>default</user>
+                    <password from_env="CLICKHOUSE_PASSWORD"/>
+                </replica>
+                <replica>
+                    <host>clickhouse-2</host>
+                    <port>9000</port>
+                    <user>default</user>
+                    <password from_env="CLICKHOUSE_PASSWORD"/>
+                </replica>
+            </shard>
+            <shard>
+                <internal_replication>true</internal_replication>
+                <replica>
+                    <host>clickhouse-3</host>
+                    <port>9000</port>
+                    <user>default</user>
+                    <password from_env="CLICKHOUSE_PASSWORD"/>
+                </replica>
+                <replica>
+                    <host>clickhouse-4</host>
+                    <port>9000</port>
+                    <user>default</user>
+                    <password from_env="CLICKHOUSE_PASSWORD"/>
+                </replica>
+            </shard>
+        </cluster_study>
+    </remote_servers>
+</clickhouse>
