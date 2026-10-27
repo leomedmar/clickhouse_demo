@@ -16,7 +16,7 @@ done
 echo ">> Demo 1 — first steps";         $CH < 01_first_steps.sql           > /dev/null
 echo ">> Demo 2a — CSV files";          bash 02_load_files.sh              > /dev/null
 # If the plan B files exist (00_prepare_offline.sh), use file() instead of s3()
-if docker exec clickhouse-1 test -s /var/lib/clickhouse/user_files/nyc/trips_2.gz; then
+if MSYS_NO_PATHCONV=1 docker exec clickhouse-1 test -s /var/lib/clickhouse/user_files/nyc/trips_2.gz; then
   echo ">> Demo 2b — NYC Taxi (OFFLINE mode, file())"
   sed "s#s3('https://datasets-documentation.s3.eu-west-3.amazonaws.com/nyc-taxi/#file('nyc/#g" \
     03_load_s3_nyc_taxi.sql | $CH > /dev/null

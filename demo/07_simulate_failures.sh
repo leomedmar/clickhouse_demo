@@ -23,7 +23,8 @@ q() {  # q <node> <sql>   — query on a node; errors summarized in one line
   fi
 }
 title() { echo; echo "=================================================="; echo "  $*"; echo "=================================================="; }
-pause() { if [ -t 0 ]; then read -rp "  [Press Enter to continue] " _; fi; }
+pause() { if [ -t 0 ]; then read -rp "  [${1:-Press Enter to continue}] " _; fi; }
+nodes() { docker ps -a --format '   {{.Names}}  {{.Status}}' --filter name=clickhouse- --filter name=keeper- | sort; }
 count_q='SELECT count() FROM demo_rep.events'
 insert_q='INSERT INTO demo_rep.events SELECT now(), number, '"'"'purchase'"'"', 1 FROM numbers(100000) SETTINGS distributed_foreground_insert = 1'
 
@@ -34,6 +35,7 @@ pause
 
 title "1. ONE replica dies (clickhouse-2) → nothing is lost"
 docker stop clickhouse-2 >/dev/null
+nodes
 echo "   SELECT still works (shard 1 answers through clickhouse-1):"; q clickhouse-1 "$count_q"
 echo "   INSERT still works:"; q clickhouse-1 "$insert_q"; q clickhouse-1 "$count_q"
 pause
@@ -47,29 +49,36 @@ pause
 
 title "3. One replica of EACH shard dies (clickhouse-2 and clickhouse-4)"
 docker stop clickhouse-2 clickhouse-4 >/dev/null
+nodes
 echo "   Cluster still complete — each shard still has 1 live copy:"; q clickhouse-1 "$count_q"
+pause "Press Enter to bring clickhouse-2 and clickhouse-4 back"
 docker start clickhouse-2 clickhouse-4 >/dev/null; sleep 10
+echo "   Back:"; nodes
 pause
 
 title "4. A WHOLE SHARD dies (clickhouse-3 and clickhouse-4)"
 docker stop clickhouse-3 clickhouse-4 >/dev/null
+nodes
 # Fail fast on the dead hosts: with the default retries a query to a stopped container can take
 # 15–45 s on Docker Desktop (connections hang until timeout instead of being refused).
 fast_fail='connections_with_failover_max_tries = 1, connect_timeout_with_failover_ms = 500'
 echo "   By default the query FAILS (better an error than a wrong number):"; q clickhouse-1 "$count_q SETTINGS $fast_fail"
 echo "   With skip_unavailable_shards = 1 it answers, but with only half the data:"
 q clickhouse-1 "$count_q SETTINGS skip_unavailable_shards = 1, $fast_fail"
+pause "Press Enter to bring shard 2 (clickhouse-3 and clickhouse-4) back"
 docker start clickhouse-3 clickhouse-4 >/dev/null; sleep 10
 echo "   Shard back:"; q clickhouse-1 "$count_q"
 pause
 
 title "5. ONE keeper dies (keeper-1) → 2/3 majority holds, everything works"
 docker stop keeper-1 >/dev/null; sleep 5
+nodes
 q clickhouse-1 "$insert_q"; q clickhouse-1 "$count_q"
 pause
 
 title "6. TWO keepers die → no majority: reads work, writes don't"
 docker stop keeper-2 >/dev/null; sleep 5
+nodes
 echo "   SELECT works:"; q clickhouse-1 "$count_q"
 echo "   After the Keeper session timeout (~30 s) the replicas switch to read-only (the alarm to watch):"
 sleep 30
@@ -78,6 +87,7 @@ echo "   INSERT fails (the replicas cannot coordinate):"
 # insert_keeper_max_retries = 0 → fails right away; by default the INSERT keeps retrying and
 # may end up written when Keeper comes back (client timeout ≠ lost INSERT!)
 q clickhouse-1 "INSERT INTO demo_rep.events_local SETTINGS insert_keeper_max_retries = 0 VALUES (now(), 1, 'purchase', 1)"
+pause "Press Enter to bring keeper-1 and keeper-2 back"
 docker start keeper-1 keeper-2 >/dev/null
 echo "   Keepers back — waiting for the replicas to reconnect..."
 for i in $(seq 1 30); do
