@@ -1,7 +1,8 @@
 # ClickHouse Lab — 2 shards × 2 replicas on Docker
 
-A local ClickHouse cluster for learning and live demos, with tested demo scripts that go
-from a first table to a fault-tolerant 2 × 2 cluster.
+A local ClickHouse cluster for learning and live demos, plus a ready-to-present
+introductory talk (≈ 45–50 min, in English) with tested demo scripts, and a second module that
+starts on the cluster from the first statement (`module2_cluster/`).
 
 - **ClickHouse 25.8 LTS** — 4 server nodes: 2 shards × 2 replicas
 - **ClickHouse Keeper** — 3 nodes (Raft quorum) for replication and `ON CLUSTER` DDL
@@ -176,17 +177,31 @@ docker_study/
 │
 ├── backup_config_1s2r/            ← previous topology (1 shard × 2 replicas), reference only
 │
-└── demo/
-    ├── 00_prepare_offline.sh          ← optional: pre-download NYC Taxi files (no-network plan B)
-    ├── 01_first_steps.sql             ← Demo 1: database, MergeTree table, 10M rows, compression
-    ├── 02_load_files.sh               ← Demo 2a: load CSV via clickhouse-client, HTTP (curl), file()
-    ├── 03_load_s3_nyc_taxi.sql        ← Demo 2b: s3() table function, schema inference, 3M real rows
-    ├── 04_mergetree_internals.sql     ← Demo 3: parts, merges, sparse index (EXPLAIN), partitions
-    ├── 05_alter_and_delete.sql        ← Demo 4: ALTER, lightweight DELETE, UPDATE mutation, ReplacingMergeTree
-    ├── 06_cluster_shards_replicas.sql ← Demo 5: ON CLUSTER, ReplicatedMergeTree, Distributed
-    ├── 07_simulate_failures.sh        ← Demo 6: stop/start nodes and keepers live, show behaviour
-    ├── 99_cleanup.sql                 ← drop all demo databases (all nodes)
-    └── validate_demos.sh              ← run everything end-to-end (rehearsal)
+├── demo/
+│   ├── 00_prepare_offline.sh          ← optional: pre-download NYC Taxi files (no-network plan B)
+│   ├── 01_first_steps.sql             ← Demo 1: database, MergeTree table, 10M rows, compression
+│   ├── 02_load_files.sh               ← Demo 2a: load CSV via clickhouse-client, HTTP (curl), file()
+│   ├── 03_load_s3_nyc_taxi.sql        ← Demo 2b: s3() table function, schema inference, 3M real rows
+│   ├── 04_mergetree_internals.sql     ← Demo 3: parts, merges, sparse index (EXPLAIN), partitions
+│   ├── 05_alter_and_delete.sql        ← Demo 4: ALTER, lightweight DELETE, UPDATE mutation, ReplacingMergeTree
+│   ├── 06_cluster_shards_replicas.sql ← Demo 5: ON CLUSTER, ReplicatedMergeTree, Distributed
+│   ├── 07_simulate_failures.sh        ← Demo 6: stop/start nodes and keepers live, show behaviour
+│   ├── 99_cleanup.sql                 ← drop all demo databases (all nodes)
+│   └── validate_demos.sh              ← run everything end-to-end (rehearsal)
+│
+├── module2_cluster/                   ← Module 2: cluster first (see section 7)
+│   ├── README.md
+│   ├── 01_cluster_first.sql           ← ON CLUSTER from the start; Distributed tables with cityHash64(user_id) vs rand()
+│   ├── 02_filesystem_locations.sql    ← where tables, parts and files live on disk and in Keeper
+│   ├── 03_keeper_commands.sh          ← Keeper from the CLI: ruok/srvr/mntr, clickhouse-keeper-client, system.zookeeper
+│   └── 99_cleanup.sql                 ← drop the lab database (all nodes)
+│
+└── apresentacao/                       ← presentation material (not part of the public repo)
+    ├── apresentacao_clickhouse_en.md   ← 40 slides, English (input for the MD → PPTX skill)
+    ├── apresentacao_module2_cluster_en.md ← Module 2: 16 slides, English
+    ├── guia_apresentador_en.md         ← presenter guide, English: timing, demo order, reference numbers
+    ├── apresentacao_clickhouse.md      ← original Portuguese version (reference only, outdated names)
+    └── guia_apresentador.md            ← original Portuguese version (reference only, outdated names)
 ```
 
 ### How the configuration fits together
@@ -219,19 +234,32 @@ This is a **local lab setup** — in production create dedicated users with RBAC
 
 ---
 
-## 7. Demos
+## 7. Presentation material
 
-Ten scripts in `demo/` take you from a single table to a fault-tolerant cluster (≈ 30 min live):
+The presentation is in **English** under `apresentacao/` (the original Portuguese files are kept
+next to it for reference only; their table, column and script names predate the translation).
 
-| Demo | Script | What it shows |
+- **`apresentacao_clickhouse_en.md`** — the slide deck source. Convention for the MD → PPTX skill:
+  - each slide starts with `## SLIDE N — Title` and ends with a `---` line;
+  - the **`Speaker notes:`** block at the end of each slide holds the speaker notes
+    (intended for the PowerPoint notes pane, not the slide body);
+  - the text before `## SLIDE 1` is metadata (duration, environment), not a slide.
+- **`guia_apresentador_en.md`** — presenter guide: preparation checklist, minute-by-minute plan,
+  demo order and dependencies, failure-demo script, reference numbers, troubleshooting.
+  Not meant to be converted into slides.
+
+Talk outline (≈ 50 min):
+
+| Slides | Topic | Demo |
 |---|---|---|
-| 1 | `01_first_steps.sql` | Database, MergeTree table, 10M rows in seconds, compression per column |
-| 2a | `02_load_files.sh` | Load a CSV three ways: `clickhouse-client`, HTTP (`curl`), `file()` |
-| 2b | `03_load_s3_nyc_taxi.sql` | `s3()` table function, schema inference, 3M real NYC Taxi trips |
-| 3 | `04_mergetree_internals.sql` | Parts, merges, sparse index (`EXPLAIN indexes = 1`), partitions |
-| 4 | `05_alter_and_delete.sql` | ALTER, lightweight DELETE, UPDATE mutations, ReplacingMergeTree |
-| 5 | `06_cluster_shards_replicas.sql` | `ON CLUSTER`, ReplicatedMergeTree, Distributed, asynchronous replication |
-| 6 | `07_simulate_failures.sh` | Stop replicas, a whole shard and Keeper nodes — and see what still works |
+| 1–3 | Opening, about the presenter, agenda | — |
+| 4–11 | What ClickHouse is, OLTP vs OLAP, columnar storage, why it is fast, MergeTree | — |
+| 12–13 | This lab environment, how to connect | `docker ps`, config files |
+| 14–18 | CREATE TABLE, data types, ORDER BY | `01_first_steps.sql` |
+| 19–24 | Loading data: INSERT, formats, CSV, HTTP, S3 | `02_…sh`, `03_…sql` |
+| 25–30 | Parts, sparse index, partitions, ALTER/UPDATE/DELETE | `04_…sql`, `05_…sql` |
+| 31–36 | Replicas vs shards, Distributed tables, "what if a container dies?" | `06_…sql`, `07_simulate_failures.sh` |
+| 37–40 | Best practices, cheat sheet, next steps, Q&A | — |
 
 ### Running the demos
 
@@ -252,6 +280,28 @@ docker exec -i clickhouse-1 clickhouse-client --multiquery < demo/99_cleanup.sql
 `07_simulate_failures.sh` really stops and starts containers (`docker stop/start`) and restores
 everything at the end. If you interrupt it with Ctrl+C, run `./cluster.sh up -d` to bring
 any stopped node back.
+
+### Module 2 — Cluster first
+
+`module2_cluster/` is a second, independent module (own database `lab`, no dependency on `demo/`).
+Module 1 starts on one node and reaches the cluster in Demo 5; module 2 does it the other way
+around: every object is created on the cluster from the first statement (`ON CLUSTER cluster_study`,
+`ReplicatedMergeTree`, `Distributed`), which avoids recreating tables and reloading data later.
+The slides are in `apresentacao/apresentacao_module2_cluster_en.md` (16 slides).
+
+| File | What it shows |
+|---|---|
+| `01_cluster_first.sql` | Replicated local tables on all 4 nodes, and two Distributed tables over the same layout: sharding key `cityHash64(user_id)` (same user → same shard) vs `rand()` (even spread, no locality), with rows per shard and a locality check |
+| `02_filesystem_locations.sql` | Where tables, parts and files live: `system.tables` (`metadata_path`, `data_paths`), `system.parts.path`, `system.replicas.zookeeper_path` |
+| `03_keeper_commands.sh` | Keeper from the command line: 4-letter words (`ruok`, `srvr`, `mntr`), `clickhouse-keeper-client` (`ls`, `get`, `get_stat`) and `system.zookeeper` |
+| `99_cleanup.sql` | `DROP DATABASE lab ON CLUSTER … SYNC` |
+
+```bash
+docker exec -i clickhouse-1 clickhouse-client --multiquery < module2_cluster/01_cluster_first.sql
+docker exec -i clickhouse-1 clickhouse-client --multiquery < module2_cluster/02_filesystem_locations.sql
+bash module2_cluster/03_keeper_commands.sh
+docker exec -i clickhouse-1 clickhouse-client --multiquery < module2_cluster/99_cleanup.sql
+```
 
 ---
 
@@ -301,9 +351,5 @@ docker run --rm -v "$PWD":/x alpine sh -c 'rm -rf /x/keeper-*/data/* /x/keeper-*
 | `Table … already exists` when running a demo | Demo already ran | Run `99_cleanup.sql` (see above) |
 | NYC Taxi load (demo 2b) is slow or fails | Network / S3 access | Run `00_prepare_offline.sh` beforehand; use block 4b (`file()`) in `03_load_s3_nyc_taxi.sql`. `validate_demos.sh` switches to it automatically when the files exist |
 
----
 
-## 10. Related material
-
-- ClickHouse documentation: <https://clickhouse.com/docs>
-- ClickHouse Academy: <https://learn.clickhouse.com/>
+Official documentation: <https://clickhouse.com/docs>
